@@ -27,11 +27,36 @@ export async function POST(request) {
     
     Keep it conversational, enthusiastic, and under 100 words. Make it feel like talking to a knowledgeable local friend.`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    // Add timeout to prevent long waits
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), 5000) // 5 second timeout
+    })
 
-    return Response.json({ response: text });
+    try {
+      const result = await Promise.race([
+        model.generateContent(prompt),
+        timeoutPromise
+      ]);
+      const response = await result.response;
+      const text = response.text();
+      return Response.json({ response: text });
+    } catch (apiError) {
+      console.warn('Gemini API unavailable, using fallback greeting')
+      // Fast fallback response
+      const fallbackGreeting = `🌟 Welcome to TouristBuddy!
+
+Hello from ${location}! I'm your personal travel companion, ready to help you discover the best this amazing city has to offer.
+
+I can guide you to:
+🍽️ Amazing restaurants and local food spots
+🏛️ Must-visit attractions and hidden gems  
+🎯 Fun activities and experiences
+🛍️ Great shopping areas
+
+What would you like to explore first? Just ask me anything about ${location}!`
+
+      return Response.json({ response: fallbackGreeting });
+    }
 
   } catch (error) {
     console.error('Gemini API Error:', error);

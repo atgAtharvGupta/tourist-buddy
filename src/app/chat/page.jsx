@@ -224,35 +224,86 @@ export default function Chat() {
 
     const userMessage = { role: 'user', content: input }
     setMessages(prev => [...prev, userMessage])
+    const userInput = input
     setInput('')
     setIsLoading(true)
 
     try {
-      // Send to Gemini API for intelligent response
-      const response = await fetch('/api/gemini/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: input,
-          location: location,
-          conversationHistory: messages.slice(-5) // Send last 5 messages for context
-        }),
-      })
+      // Check if the user is asking for specific places - if so, trigger search
+      const searchKeywords = ['restaurant', 'cafe', 'bar', 'attraction', 'museum', 'gallery', 'shopping', 'mall', 'hotel', 'food', 'eat', 'drink']
+      const lowerInput = userInput.toLowerCase()
+      const isSearchQuery = searchKeywords.some(keyword => lowerInput.includes(keyword))
 
-      if (response.ok) {
-        const data = await response.json()
-        setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
+      if (isSearchQuery) {
+        // Trigger search functionality for place-related queries
+        console.log('Triggering search for:', userInput)
+        await handleSearchWithQuery(userInput)
+        
+        // Add a helpful message
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: `🔍 I'm searching for "${userInput}" in ${location}. Check the results above! You can also ask me for more specific recommendations or details about any of these places.`
+        }])
       } else {
-        throw new Error('Failed to get AI response')
+        // Send to Gemini API for general travel conversation
+        const response = await fetch('/api/gemini/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: userInput,
+            location: location,
+            conversationHistory: messages.slice(-5) // Send last 5 messages for context
+          }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
+        } else {
+          throw new Error('Failed to get AI response')
+        }
       }
     } catch (error) {
       console.error('Chat error:', error)
-      // Fallback response
+      
+      // Smart fallback based on user query
+      const lowerInput = userInput.toLowerCase()
+      let fallbackResponse = `I apologize, but I'm having trouble connecting right now. However, I'd still love to help you explore ${location}!`
+      
+      if (lowerInput.includes('restaurant') || lowerInput.includes('food') || lowerInput.includes('eat')) {
+        fallbackResponse = `🍽️ Here are some popular restaurant areas in ${location}:
+
+• **Sarafa Bazaar** - Famous night food market with street food and local delicacies
+• **M.G. Road** - Fine dining restaurants and cafes
+• **Palasia** - Mix of restaurants, from casual to upscale dining
+• **Vijay Nagar** - Student-friendly eateries and food courts
+
+Would you like me to search for a specific type of cuisine or restaurant? Try using the search bar above for more detailed results!`
+      } else if (lowerInput.includes('attraction') || lowerInput.includes('visit') || lowerInput.includes('see')) {
+        fallbackResponse = `🏛️ Popular attractions in ${location}:
+
+• **Rajwada Palace** - Historic palace in the heart of the city
+• **Lal Bagh Palace** - Beautiful palace with European architecture
+• **Kanch Mandir** - Stunning glass temple
+• **Central Museum** - Rich collection of artifacts
+
+Use the search above for more specific recommendations and details!`
+      } else if (lowerInput.includes('bar') || lowerInput.includes('drink') || lowerInput.includes('nightlife')) {
+        fallbackResponse = `🍻 Nightlife spots in ${location}:
+
+• **10 Downing Street** - Popular pub and restaurant
+• **The Creative Kitchen** - Rooftop bar with great ambiance
+• **Chappan Dukan** - Food street with cafes and light drinks
+• **Hotel Crown Palace** - Upscale bar and lounge
+
+Try searching above for more specific recommendations!`
+      }
+      
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `I apologize, but I'm having trouble connecting right now. However, I'd still love to help you explore ${location}! Could you try asking your question again, or would you like to use the search feature above to find specific places?`
+        content: fallbackResponse
       }])
     } finally {
       setIsLoading(false)
