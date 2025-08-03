@@ -378,29 +378,7 @@ Try searching above for more specific recommendations!`
           )}
         </div>
 
-        {/* Search Section */}
-        <div className="mb-6">
-          <SearchBar 
-            onResults={handleSearchResults}
-            onLoading={handleSearchLoading}
-            userLocation={location}
-          />
-
-          {/* Search Suggestions */}
-          {searchResults.length === 0 && !isSearching && (
-            <SearchSuggestions onSuggestionClick={handleSuggestionClick} />
-          )}
-
-          {/* Search Results */}
-          {(searchResults.length > 0 || isSearching) && (
-            <div className="mb-6">
-              <SearchResults 
-                results={searchResults}
-                isLoading={isSearching}
-              />
-            </div>
-          )}
-        </div>
+        
 
         {/* Chat Interface - Takes remaining space */}
         <div className="flex-1 flex flex-col min-h-0">
